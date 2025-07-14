@@ -1,0 +1,107 @@
+﻿@page "/product/{Id}"
+@using PriceTracker.DTO
+@using PriceTracker.Interfaces
+@inject IProductVariationRepository ProductVariationRepository
+@inject IProductRepository ProductRepository
+
+<div class="page">
+    <div class="back-container">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M15.5306 18.9694C15.6003 19.0391 15.6556 19.1218 15.6933 19.2128C15.731 19.3039 15.7504 19.4015 15.7504 19.5C15.7504 19.5985 15.731 19.6961 15.6933 19.7872C15.6556 19.8782 15.6003 19.9609 15.5306 20.0306C15.4609 20.1003 15.3782 20.1556 15.2872 20.1933C15.1961 20.231 15.0985 20.2504 15 20.2504C14.9014 20.2504 14.8039 20.231 14.7128 20.1933C14.6218 20.1556 14.539 20.1003 14.4694 20.0306L6.96935 12.5306C6.89962 12.461 6.8443 12.3783 6.80656 12.2872C6.76882 12.1962 6.74939 12.0986 6.74939 12C6.74939 11.9014 6.76882 11.8038 6.80656 11.7128C6.8443 11.6217 6.89962 11.539 6.96935 11.4694L14.4694 3.96937C14.6101 3.82864 14.801 3.74958 15 3.74958C15.199 3.74958 15.3899 3.82864 15.5306 3.96937C15.6713 4.1101 15.7504 4.30097 15.7504 4.5C15.7504 4.69902 15.6713 4.88989 15.5306 5.03062L8.56029 12L15.5306 18.9694Z" fill="black" />
+        </svg>
+        <span class="voltar-span">
+            Voltar
+        </span>
+    </div>
+
+    <div>
+        <h1 class="page-title">@productName</h1>
+        <h2 class="page-subtitle">@productBrand</h2>
+    </div>
+
+    <div class="m-auto w-100">
+        <div class="m-auto">
+            <MudChart ChartType="ChartType.Line"
+            ChartSeries="@_series"
+            @bind-SelectedIndex="_index"
+            XAxisLabels="@_xAxisLabels"
+            Width="100%"
+            Height="@_height"
+            ChartOptions="@_options"
+            Style="background: #E9F0F5"
+            AxisChartOptions="_axisChartOptions" />
+        </div>
+
+    </div>
+
+    <div class="historico-container">
+        <span class="historico-label">
+            Histórico de compra
+        </span>
+        @foreach (var item in produtos)
+        {
+            <div class="prod-card">
+                <div class="left-side">
+                    <span class="date-span">@item.Date?.ToString("dd/MM/yy HH:mm")</span>
+                    <span class="name-span">@item.Name</span>
+                    <span class="brand-span">@item.Brand</span>
+                </div>
+                <div class="right-side">
+                    <span class="price-span">@item.Price?.ToString("C2")</span>
+                    <span class="store-span">@item.Store</span>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private int _index = 0;
+    private ChartOptions _options = new ChartOptions();
+    private AxisChartOptions _axisChartOptions = new AxisChartOptions();
+    private string _height = "244px";
+
+    private List<ChartSeries> _series = new();
+    private string[] _xAxisLabels = Array.Empty<string>();
+    private string productName = "";
+    private string productBrand = "";
+
+    List<ProductListDTO> produtos = new();
+    int currentPage = 1;
+    int pageSize = 4;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _axisChartOptions.MatchBoundsToSize = true;
+        var retorno = await ProductRepository.GetPagedAsyncPorProduto(currentPage, pageSize, Id);
+        produtos = retorno.ToList();
+
+        _options.YAxisFormat = "c2";
+        // Busca o nome do produto
+        var product = await ProductRepository.GetByBarcodeAsync(Id);
+        productName = product?.Name ?? "";
+        productBrand = product?.Brand?.Name ?? "";
+
+        // Busca as variações do produto
+        var variations = await ProductVariationRepository.GetByProductBarcodeAsync(Id);
+
+        // Ordena por data
+        var ordered = variations.OrderBy(v => v.Date).ToList();
+
+        // Prepara os dados para o gráfico
+        _xAxisLabels = ordered.Select(v => v.Date.ToString("dd/MM")).ToArray();
+        var prices = ordered.Select(v => (double)v.Price).ToArray();
+        double min = prices.Min();
+        double max = prices.Max();
+        int step = (int)Math.Ceiling((max - min) / 6.0);
+
+        _options.YAxisTicks = step;
+        _series = new List<ChartSeries>
+        {
+            new ChartSeries {  Name = "Preço", Data = prices, ShowDataMarkers = true }
+        };
+    }
+}

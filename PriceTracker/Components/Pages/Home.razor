@@ -1,0 +1,153 @@
+﻿@page "/"
+@using PriceTracker.Components.Pages.States
+@using PriceTracker.DTO
+@using PriceTracker.Interfaces
+@using PriceTracker.Models
+@using ZXingBlazor.Components
+@inject IProductRepository produtoRepository
+@inject IProductVariationRepository produtoVariacaoRepository
+@inject NavigationManager NavigationManager
+@inject BarcodeState BarcodeState
+
+
+<div class="page">
+    <h1 class="page-title">Últimos registros</h1>
+
+    <div class="search-bar">
+        <MudTextField ValueChanged="OnSearchTermChanged" T="string"
+                      Class="w-100" Value="searchTerm" Label="Pesquisar..." Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Dark" />
+    </div>
+
+    <div class="product-list">
+        @foreach (var item in produtos)
+        {
+            <div class="prod-card" @onclick="() => NavigateToProduct(item.Barcode)">
+                <div class="left-side">
+                    <span class="date-span">@item.Date?.ToString("dd/MM/yy HH:mm")</span>
+                    <span class="name-span">@item.Name</span>
+                    <span class="brand-span">@item.Brand</span>
+                </div>
+                <div class="right-side">
+                    <span class="price-span">@item.Price?.ToString("C2")</span>
+                    <span class="store-span">@item.Store</span>
+                </div>
+            </div>
+        }
+    </div>
+
+
+    @* <button class="add-btn" @onclick="ScanBarcode"> *@
+    @*     <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"> *@
+    @*         <path d="M35 20C35 20.3315 34.8683 20.6495 34.6339 20.8839C34.3995 21.1183 34.0815 21.25 33.75 21.25H21.25V33.75C21.25 34.0815 21.1183 34.3995 20.8839 34.6339C20.6495 34.8683 20.3315 35 20 35C19.6685 35 19.3505 34.8683 19.1161 34.6339C18.8817 34.3995 18.75 34.0815 18.75 33.75V21.25H6.25C5.91848 21.25 5.60054 21.1183 5.36612 20.8839C5.1317 20.6495 5 20.3315 5 20C5 19.6685 5.1317 19.3505 5.36612 19.1161C5.60054 18.8817 5.91848 18.75 6.25 18.75H18.75V6.25C18.75 5.91848 18.8817 5.60054 19.1161 5.36612C19.3505 5.1317 19.6685 5 20 5C20.3315 5 20.6495 5.1317 20.8839 5.36612C21.1183 5.60054 21.25 5.91848 21.25 6.25V18.75H33.75C34.0815 18.75 34.3995 18.8817 34.6339 19.1161C34.8683 19.3505 35 19.6685 35 20Z" *@
+    @*               fill="#E9F0F5" /> *@
+    @*     </svg> *@
+    @* </button> *@
+</div>
+
+@if (ShowScanBarcode)
+{
+    <div class="reader-container">
+
+        <BarcodeReader ScanResult="OnScanResult"
+                       Close="(()=>ShowScanBarcode=!ShowScanBarcode)"
+                       Pdf417Only="Pdf417"
+                       Decodeonce="!DecodeContinuously"
+                       DecodeAllFormats="DecodeAllFormats"
+                       SelectDeviceBtnTitle="Select Device" />
+    </div>
+
+}
+
+@code {
+    bool ShowScanBarcode { get; set; } = false;
+    public string? BarCode { get; set; }
+    public bool Pdf417 { get; set; }
+    public bool DecodeContinuously { get; set; }
+    public bool DecodeAllFormats { get; set; }
+    private string message;
+    CancellationTokenSource? _debounceCts;
+
+    private void NavigateToProduct(string barcode)
+    {
+        NavigationManager.NavigateTo($"/product/{barcode}");
+    }
+    private async Task OnSearchTermChanged(string value)
+    {
+        searchTerm = value;
+
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+
+        try
+        {
+            await Task.Delay(300, token);
+            if (!token.IsCancellationRequested)
+            {
+                await LoadProdutos();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignorado
+        }
+    }
+
+    private void OnScanResult(string result)
+    {
+        BarCode = result;
+        ShowScanBarcode = false;
+        BarcodeState.Barcode = result;
+        NavigationManager.NavigateTo("/register-price");
+    }
+
+    async Task ScanBarcode()
+    {
+        var scanner = new ZXing.Mobile.MobileBarcodeScanner();
+        var result = await scanner.Scan();
+        if (result != null)
+        {
+            BarcodeState.Barcode = result.Text;
+            NavigationManager.NavigateTo("/register-price");
+        }
+    }
+
+    private Task OnError(string message)
+    {
+        this.message = message;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+
+    string barcode = string.Empty;
+    string valor = string.Empty;
+    bool showModal = false;
+    int currentPage = 1;
+    int pageSize = 10;
+    string searchTerm = "";
+    List<ProductListDTO> produtos = new();
+
+    ProductClass? produtoExistente = null;
+    string nomeProduto = string.Empty;
+
+    async Task LoadProdutos()
+    {
+        var result = await produtoRepository.GetPagedAsync(currentPage, pageSize, searchTerm);
+        produtos = result.ToList();
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProdutos();
+
+    }
+
+    void CloseModal()
+    {
+        showModal = false;
+        valor = string.Empty;
+    }
+
+}

@@ -1,0 +1,252 @@
+﻿@layout MainLayoutNoNav
+
+@page "/register-price"
+@using PriceTracker.Components.Layout
+@using PriceTracker.Components.Pages.States
+@using PriceTracker.Interfaces
+@using PriceTracker.Models
+@using System.Globalization
+@inject BarcodeState BarcodeState
+@inject NavigationManager NavigationManager
+@inject IProductRepository ProductRepository
+@inject IProductVariationRepository ProductVariationRepository
+@inject GtinService GtinService
+
+<div class="page">
+    <div class="register-price-inside">
+
+        <div class="back-container">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15.5306 18.9694C15.6003 19.0391 15.6556 19.1218 15.6933 19.2128C15.731 19.3039 15.7504 19.4015 15.7504 19.5C15.7504 19.5985 15.731 19.6961 15.6933 19.7872C15.6556 19.8782 15.6003 19.9609 15.5306 20.0306C15.4609 20.1003 15.3782 20.1556 15.2872 20.1933C15.1961 20.231 15.0985 20.2504 15 20.2504C14.9014 20.2504 14.8039 20.231 14.7128 20.1933C14.6218 20.1556 14.539 20.1003 14.4694 20.0306L6.96935 12.5306C6.89962 12.461 6.8443 12.3783 6.80656 12.2872C6.76882 12.1962 6.74939 12.0986 6.74939 12C6.74939 11.9014 6.76882 11.8038 6.80656 11.7128C6.8443 11.6217 6.89962 11.539 6.96935 11.4694L14.4694 3.96937C14.6101 3.82864 14.801 3.74958 15 3.74958C15.199 3.74958 15.3899 3.82864 15.5306 3.96937C15.6713 4.1101 15.7504 4.30097 15.7504 4.5C15.7504 4.69902 15.6713 4.88989 15.5306 5.03062L8.56029 12L15.5306 18.9694Z" fill="black" />
+            </svg>
+            <span class="voltar-span">
+                Voltar
+            </span>
+        </div>
+
+        <div class="first-half">
+            <h1 class="page-title">Cadastrar valor</h1>
+
+            <MudTextField Margin="Margin.Dense" Class="w-100"  @bind-Value="name" Label="Nome do produto"></MudTextField>
+            <div class="w-100">
+                <MudAutocomplete T="string"
+                                 Style="width:100%"
+                                 Margin="Margin.Dense"
+                                 Label="Marca do produto"
+                                 Text="@brand"
+                                 TextChanged="OnBrandTextChanged"
+                                 Value="@brand"
+                                 ValueChanged="OnBrandValueChanged"
+                                 SearchFunc="@SearchBrands"
+                                 ToStringFunc="x => x" />
+            </div>
+            
+
+            <div class="w-100">
+                <MudAutocomplete T="string"
+                                 Margin="Margin.Dense"
+                                 Class="w-100"
+                                 Text="@store"
+                                 TextChanged="OnStoreTextChanged"
+                                 Value="@store"
+                                 ValueChanged="OnStoreValueChanged"
+                                 SearchFunc="@SearchStores"
+                                 Label="Onde foi comprado"
+                                 ToStringFunc="s => s"
+                                 Style="width:100%" />
+</div>
+            
+
+
+            <div class="two-input-div">
+                <MudNumericField title="Valor"
+                Immediate="false"
+                Label="Valor"
+                Margin="Margin.Dense"
+                Format="C2"
+                Culture="@_en"
+                T="decimal"
+                @bind-Value="price"
+                For="@(() =>price)"
+                />
+                <MudDatePicker Margin="Margin.Dense"
+                Date="date" DateChanged="OnDateChanged" Label="Data da compra" Culture="@_en"></MudDatePicker>
+            </div>
+        </div>
+
+        <button @onclick="OnCadastrarClicked" class="create-btn">
+            Cadastrar
+        </button>
+    </div>
+</div>
+
+@code {
+    public CultureInfo _en = CultureInfo.GetCultureInfo("pt-BR");
+    private string name = "";
+    private string brand = "";
+    private string store = "";
+    private decimal price;
+    private DateTime date = DateTime.Now;
+    private string message = "";
+    string barcode = "";
+
+    private List<string> brands = new();
+    private List<string> stores = new();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        barcode = BarcodeState.Barcode;
+        date = DateTime.Now;
+
+        brands = (await ProductRepository.GetAllBrands())
+            .Select(b => b.Name)
+            .Where(b => !string.IsNullOrWhiteSpace(b))
+            .Distinct()
+            .OrderBy(b => b)
+            .ToList();
+
+        stores = (await ProductRepository.GetAllStores())
+            .Select(s => s.Name)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct()
+            .OrderBy(s => s)
+            .ToList();
+
+        if (!string.IsNullOrEmpty(barcode))
+        {
+            var product = await ProductRepository.GetByBarcodeAsync(barcode);
+            if (product != null)
+            {
+                name = product.Name;
+                var brandObj = await ProductRepository.GetBrandById(product.BrandId);
+                brand = brandObj?.Name ?? "";
+            }
+            else if (Connectivity.Current.NetworkAccess == NetworkAccess.Internet)
+            {
+                try
+                {
+                    var gtinInfo = await GtinService.GetGtinInfoAsync(barcode);
+                    if (gtinInfo != null)
+                    {
+                        name = gtinInfo.nome;
+                        brand = gtinInfo.marca ?? "";
+                        // etc.
+                    }
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnCadastrarClicked()
+    {
+        try
+        {
+            var product = await ProductRepository.GetByBarcodeAsync(barcode);
+            if (product == null)
+            {
+                var brand = new Brand() { Name = this.brand };
+                var brandId = await ProductRepository.GetBrandByName(brand.Name);
+                if (brandId == 0)
+                    brandId = await ProductRepository.AddBrandAsync(brand);
+
+                var store = new Store() { Name = this.store };
+                var storeId = await ProductRepository.GetStoreByName(store.Name);
+                if (storeId == 0)
+                    storeId = await ProductRepository.AddStoreAsync(store);
+
+                product = new ProductClass
+                    {
+                        Barcode = barcode ?? "",
+                        Name = name,
+                        BrandId = brandId,
+                    };
+                await ProductRepository.AddAsync(product);
+
+                var productVariation = new ProductVariation
+                    {
+                        ProductBarcode = product.Barcode,
+                        Price = price,
+                        Date = date,
+                        StoreId = storeId
+                    };
+                await ProductVariationRepository.AddAsync(productVariation);
+            }
+            else
+            {
+                var store = new Store() { Name = this.store };
+                var storeId = await ProductRepository.GetStoreByName(store.Name);
+                if (storeId == 0)
+                    storeId = await ProductRepository.AddStoreAsync(store);
+
+                var productVariation = new ProductVariation
+                    {
+                        ProductBarcode = product.Barcode,
+                        Price = price,
+                        Date = date,
+                        StoreId = storeId
+                    };
+                await ProductVariationRepository.AddAsync(productVariation);
+            }
+            message = "Cadastro realizado com sucesso!";
+            NavigationManager.NavigateTo("/");
+        }
+        catch (Exception ex)
+        {
+            message = $"Erro ao cadastrar: {ex.Message}";
+        }
+    }
+
+    private void OnDateChanged(DateTime? newDate)
+    {
+        if (newDate.HasValue)
+            date = newDate.Value;
+        StateHasChanged();
+    }
+
+    private Task<IEnumerable<string>> SearchBrands(string value, CancellationToken ct)
+    {
+        return Task.FromResult(
+            brands.Where(b => b.Contains(value, StringComparison.OrdinalIgnoreCase)).AsEnumerable()
+        );
+    }
+
+    private Task OnBrandTextChanged(string value)
+    {
+        brand = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnBrandValueChanged(string value)
+    {
+        brand = value;
+        return Task.CompletedTask;
+    }
+
+    private Task<IEnumerable<string>> SearchStores(string value, CancellationToken ct)
+    {
+        return Task.FromResult(
+            stores.Where(s => s.Contains(value, StringComparison.OrdinalIgnoreCase)).AsEnumerable()
+        );
+    }
+
+    private Task OnStoreTextChanged(string value)
+    {
+        store = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnStoreValueChanged(string value)
+    {
+        store = value;
+        return Task.CompletedTask;
+    }
+
+
+
+}

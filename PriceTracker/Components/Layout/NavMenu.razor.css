@@ -1,0 +1,39 @@
+.nav-absolute{
+    
+}
+
+.nav-container {
+    display: flex;
+    width: 90%;
+    height: 60px;
+    padding: 0px 32px;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    bottom: 32px;
+    border-radius: 999px;
+    background: var(--tertiary, #02081E);
+    left:50%;
+    transform:translateX(-50%);
+}
+
+.nav-btn {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    aspect-ratio: 1/1;
+    cursor:pointer;
+}
+
+.nav-main-btn {
+    display: flex;
+    width: 68px;
+    height: 68px;
+    padding: 20px;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: #0D2B95;
+}

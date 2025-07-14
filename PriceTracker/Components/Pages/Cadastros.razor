@@ -1,0 +1,132 @@
+﻿@page "/cadastros"
+@using PriceTracker.Components.Pages.States
+@using PriceTracker.DTO
+@using PriceTracker.Interfaces
+@using PriceTracker.Models
+@using ZXingBlazor.Components
+@inject IProductRepository produtoRepository
+@inject IProductVariationRepository produtoVariacaoRepository
+@inject NavigationManager NavigationManager
+@inject BarcodeState BarcodeState
+
+
+<div class="page">
+    <h1 class="page-title">Cadastros</h1>
+
+    <div class="search-bar">
+        <MudTextField ValueChanged="OnSearchTermChanged" T="string"
+                      Class="w-100" Value="searchTerm" Label="Pesquisar..." Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Dark" />
+    </div>
+
+    <div class="product-list">
+        @foreach (var item in produtos)
+        {
+            <div class="prod-card" @onclick="() => NavigateToProduct(item.Barcode)">
+                <div class="left-side">
+                    <span class="date-span">@item.Date?.ToString("dd/MM/yy HH:mm")</span>
+                    <span class="name-span">@item.Name</span>
+                    <span class="brand-span">@item.Brand</span>
+                </div>
+                <div class="right-side">
+                    <span class="price-span">@item.Price?.ToString("C2")</span>
+                    <span class="store-span">@item.Store</span>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+
+@code {
+    bool ShowScanBarcode { get; set; } = false;
+    public string? BarCode { get; set; }
+    public bool Pdf417 { get; set; }
+    public bool DecodeContinuously { get; set; }
+    public bool DecodeAllFormats { get; set; }
+    private string message;
+    CancellationTokenSource? _debounceCts;
+
+    private void NavigateToProduct(string barcode)
+    {
+        NavigationManager.NavigateTo($"/product/{barcode}");
+    }
+    private async Task OnSearchTermChanged(string value)
+    {
+        searchTerm = value;
+
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+
+        try
+        {
+            await Task.Delay(300, token);
+            if (!token.IsCancellationRequested)
+            {
+                await LoadProdutos();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignorado
+        }
+    }
+
+    private void OnScanResult(string result)
+    {
+        BarCode = result;
+        ShowScanBarcode = false;
+        BarcodeState.Barcode = result;
+        NavigationManager.NavigateTo("/register-price");
+    }
+
+    async Task ScanBarcode()
+    {
+        var scanner = new ZXing.Mobile.MobileBarcodeScanner();
+        var result = await scanner.Scan();
+        if (result != null)
+        {
+            BarcodeState.Barcode = result.Text;
+            NavigationManager.NavigateTo("/register-price");
+        }
+    }
+
+    private Task OnError(string message)
+    {
+        this.message = message;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+
+    string barcode = string.Empty;
+    string valor = string.Empty;
+    bool showModal = false;
+    int currentPage = 1;
+    int pageSize = 10;
+    string searchTerm = "";
+    List<ProductListDTO> produtos = new();
+
+    ProductClass? produtoExistente = null;
+    string nomeProduto = string.Empty;
+
+    async Task LoadProdutos()
+    {
+        var result = await produtoRepository.GetPagedAsync(currentPage, pageSize, searchTerm);
+        produtos = result.ToList();
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProdutos();
+
+    }
+
+    void CloseModal()
+    {
+        showModal = false;
+        valor = string.Empty;
+    }
+
+}
