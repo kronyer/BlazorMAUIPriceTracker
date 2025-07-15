@@ -1,0 +1,326 @@
+﻿@page "/lista"
+@using PriceTracker.Components.Pages.States
+@using PriceTracker.DTO
+@using PriceTracker.Interfaces
+@using PriceTracker.Models
+@using PriceTracker.Services
+@using ZXingBlazor.Components
+@inject IProductRepository produtoRepository
+@inject IProductVariationRepository produtoVariacaoRepository
+@inject NavigationManager NavigationManager
+@inject BarcodeState BarcodeState
+@inject AppSharedState SharedState
+
+<div class="page">
+    <h1 class="page-title">Lista de compras</h1>
+
+    @if (!hasResult)
+    {
+
+        <div class="search-bar">
+            <MudTextField Immediate ValueChanged="OnSearchTermChanged" T="string"
+            Class="w-100" Value="searchTerm" Label="Pesquisar..." Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Dark" />
+        </div>
+
+        <div class="product-list">
+            @if (isAdicionando)
+            {
+                @foreach (var item in produtosParaAdicionar)
+                {
+                    <div class="prod-card">
+                        <div class="left-side">
+                            <span class="name-span">@item.Name</span>
+                            <span class="brand-span">@item.Brand</span>
+                        </div>
+                        <div class="right-side">
+                            <button @onclick="() => AdicionarProduto(item)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M10 0.25C8.07164 0.25 6.18657 0.821828 4.58319 1.89317C2.97982 2.96452 1.73013 4.48726 0.992179 6.26884C0.254225 8.05042 0.061142 10.0108 0.437348 11.9021C0.813554 13.7934 1.74215 15.5307 3.10571 16.8943C4.46928 18.2579 6.20656 19.1865 8.09787 19.5627C9.98919 19.9389 11.9496 19.7458 13.7312 19.0078C15.5127 18.2699 17.0355 17.0202 18.1068 15.4168C19.1782 13.8134 19.75 11.9284 19.75 10C19.7473 7.41498 18.7192 4.93661 16.8913 3.10872C15.0634 1.28084 12.585 0.25273 10 0.25ZM10 18.25C8.36831 18.25 6.77326 17.7661 5.41655 16.8596C4.05984 15.9531 3.00242 14.6646 2.378 13.1571C1.75358 11.6496 1.5902 9.99085 1.90853 8.39051C2.22685 6.79016 3.01259 5.32015 4.16637 4.16637C5.32016 3.01259 6.79017 2.22685 8.39051 1.90852C9.99085 1.59019 11.6497 1.75357 13.1571 2.37799C14.6646 3.00242 15.9531 4.05984 16.8596 5.41655C17.7662 6.77325 18.25 8.3683 18.25 10C18.2475 12.1873 17.3775 14.2843 15.8309 15.8309C14.2843 17.3775 12.1873 18.2475 10 18.25ZM14.5 10C14.5 10.1989 14.421 10.3897 14.2803 10.5303C14.1397 10.671 13.9489 10.75 13.75 10.75H10.75V13.75C10.75 13.9489 10.671 14.1397 10.5303 14.2803C10.3897 14.421 10.1989 14.5 10 14.5C9.80109 14.5 9.61033 14.421 9.46967 14.2803C9.32902 14.1397 9.25 13.9489 9.25 13.75V10.75H6.25C6.05109 10.75 5.86033 10.671 5.71967 10.5303C5.57902 10.3897 5.5 10.1989 5.5 10C5.5 9.80109 5.57902 9.61032 5.71967 9.46967C5.86033 9.32902 6.05109 9.25 6.25 9.25H9.25V6.25C9.25 6.05109 9.32902 5.86032 9.46967 5.71967C9.61033 5.57902 9.80109 5.5 10 5.5C10.1989 5.5 10.3897 5.57902 10.5303 5.71967C10.671 5.86032 10.75 6.05109 10.75 6.25V9.25H13.75C13.9489 9.25 14.1397 9.32902 14.2803 9.46967C14.421 9.61032 14.5 9.80109 14.5 10Z" fill="#0D2B95" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                @foreach (var item in produtosAdicionados)
+                {
+                    <div class="prod-card">
+                        <div class="left-side">
+                            <span class="name-span">@item.Name</span>
+                            <span class="brand-span">@item.Brand</span>
+                        </div>
+                        <div class="right-side">
+                            <button @onclick="() => RemoverProduto(item)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M16.5 12C16.5 12.1989 16.421 12.3897 16.2803 12.5303C16.1397 12.671 15.9489 12.75 15.75 12.75H8.25C8.05109 12.75 7.86033 12.671 7.71967 12.5303C7.57902 12.3897 7.5 12.1989 7.5 12C7.5 11.8011 7.57902 11.6103 7.71967 11.4697C7.86033 11.329 8.05109 11.25 8.25 11.25H15.75C15.9489 11.25 16.1397 11.329 16.2803 11.4697C16.421 11.6103 16.5 11.8011 16.5 12ZM21.75 12C21.75 13.9284 21.1782 15.8134 20.1068 17.4168C19.0355 19.0202 17.5127 20.2699 15.7312 21.0078C13.9496 21.7458 11.9892 21.9389 10.0979 21.5627C8.20656 21.1865 6.46928 20.2579 5.10571 18.8943C3.74215 17.5307 2.81355 15.7934 2.43735 13.9021C2.06114 12.0108 2.25422 10.0504 2.99218 8.26884C3.73013 6.48726 4.97982 4.96452 6.58319 3.89317C8.18657 2.82183 10.0716 2.25 12 2.25C14.585 2.25273 17.0634 3.28084 18.8913 5.10872C20.7192 6.93661 21.7473 9.41498 21.75 12ZM20.25 12C20.25 10.3683 19.7662 8.77325 18.8596 7.41655C17.9531 6.05984 16.6646 5.00242 15.1571 4.37799C13.6497 3.75357 11.9909 3.59019 10.3905 3.90852C8.79017 4.22685 7.32016 5.01259 6.16637 6.16637C5.01259 7.32015 4.22685 8.79016 3.90853 10.3905C3.5902 11.9908 3.75358 13.6496 4.378 15.1571C5.00242 16.6646 6.05984 17.9531 7.41655 18.8596C8.77326 19.7661 10.3683 20.25 12 20.25C14.1873 20.2475 16.2843 19.3775 17.8309 17.8309C19.3775 16.2843 20.2475 14.1873 20.25 12Z" fill="#C90003" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+
+        </div>
+        <button class="main-btn" disabled="@(produtosAdicionados.Count == 0)" @onclick="Calcular">Mostrar melhor mercado</button>
+        @* <button class="main-btn" @onclick="GerarDadosFalsos">Mostrar melhor mercado (Fake)</button> *@
+
+    }
+    else
+    {
+        <div class="best-option-container">
+            <span class="best-option-span">Melhor opção de mercado:</span>
+            <h3 class="best-option-h3">@storeComparativoDTOs.FirstOrDefault()?.StoreName</h3>
+            <p class="best-option-p">Aproximadamente @storeComparativoDTOs.FirstOrDefault()?.Total.ToString("C")</p>
+        </div>
+
+        <div class="accordion-container">
+            @for (int i = 0; i < storeComparativoDTOs.Count; i++)
+            {
+                var store = storeComparativoDTOs[i];
+                var index = i; // <- captura correta
+                <div class="accordion">
+                    <div class="accordion-header" @onclick="() => ToggleAccordion(index)">
+                        <span class="store-name">@store.StoreName</span>
+                        <div class="accordion-header-right">
+                            <span class="store-price">@store.Total.ToString("C2")</span>
+                            @if (accordionsAbertos.Contains(i))
+                            {
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M3.96945 14.4694L11.4694 6.96938C11.5391 6.89965 11.6218 6.84433 11.7129 6.80659C11.8039 6.76885 11.9015 6.74942 12.0001 6.74942C12.0986 6.74942 12.1962 6.76885 12.2873 6.80659C12.3783 6.84433 12.461 6.89965 12.5307 6.96938L20.0307 14.4694C20.1714 14.6101 20.2505 14.801 20.2505 15C20.2505 15.199 20.1714 15.3899 20.0307 15.5306C19.89 15.6714 19.6991 15.7504 19.5001 15.7504C19.301 15.7504 19.1102 15.6714 18.9694 15.5306L12.0001 8.56032L5.0307 15.5306C4.96101 15.6003 4.87829 15.6556 4.78724 15.6933C4.6962 15.731 4.59862 15.7504 4.50007 15.7504C4.40152 15.7504 4.30394 15.731 4.2129 15.6933C4.12185 15.6556 4.03913 15.6003 3.96945 15.5306C3.89976 15.461 3.84449 15.3782 3.80678 15.2872C3.76906 15.1961 3.74965 15.0986 3.74965 15C3.74965 14.9015 3.76906 14.8039 3.80678 14.7128C3.84449 14.6218 3.89976 14.5391 3.96945 14.4694Z" fill="#5A6183" />
+                                </svg>
+                            }
+                            else
+                            {
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M20.0306 9.53062L12.5306 17.0306C12.4609 17.1003 12.3782 17.1557 12.2871 17.1934C12.1961 17.2312 12.0985 17.2506 11.9999 17.2506C11.9014 17.2506 11.8038 17.2312 11.7127 17.1934C11.6217 17.1557 11.539 17.1003 11.4693 17.0306L3.9693 9.53062C3.82857 9.38988 3.74951 9.19901 3.74951 8.99999C3.74951 8.80097 3.82857 8.61009 3.9693 8.46936C4.11003 8.32863 4.30091 8.24957 4.49993 8.24957C4.69895 8.24957 4.88982 8.32863 5.03055 8.46936L11.9999 15.4397L18.9693 8.46936C19.039 8.39968 19.1217 8.34441 19.2128 8.30669C19.3038 8.26898 19.4014 8.24957 19.4999 8.24957C19.5985 8.24957 19.6961 8.26898 19.7871 8.30669C19.8781 8.34441 19.9609 8.39968 20.0306 8.46936C20.1002 8.53905 20.1555 8.62177 20.1932 8.71282C20.2309 8.80386 20.2503 8.90144 20.2503 8.99999C20.2503 9.09854 20.2309 9.19612 20.1932 9.28716C20.1555 9.37821 20.1002 9.46093 20.0306 9.53062Z" fill="#5A6183" />
+                                </svg>
+                            }
+                        </div>
+                    </div>
+
+                    @if (accordionsAbertos.Contains(i))
+                    {
+                        foreach (var produto in store.Produtos)
+                        {
+                            <div class="accordion-list-item">
+                                <div class="accordion-list-left">
+                                    <span class="prod-name-span">@produto.ProductName</span>
+                                    <span class="prod-brand-span">@produto.BrandName</span>
+                                </div>
+                                <div class="accordion-list-right">
+                                    @if(produto.IsMedia)
+                                    {
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                            <path d="M12 6C10.8133 6 9.65328 6.36656 8.66658 7.05331C7.67989 7.74007 6.91085 8.71619 6.45673 9.85823C6.0026 11.0003 5.88378 12.2569 6.11529 13.4693C6.3468 14.6817 6.91825 15.7953 7.75736 16.6694C8.59648 17.5435 9.66557 18.1387 10.8295 18.3799C11.9933 18.6211 13.1997 18.4973 14.2961 18.0242C15.3925 17.5512 16.3295 16.7501 16.9888 15.7223C17.6481 14.6945 18 13.4861 18 12.25C17.9983 10.5929 17.3656 9.00424 16.2408 7.83251C15.1159 6.66079 13.5908 6.00175 12 6ZM12 17.5385C10.9959 17.5385 10.0143 17.2283 9.17941 16.6472C8.34452 16.0661 7.6938 15.2401 7.30954 14.2738C6.92528 13.3075 6.82474 12.2441 7.02063 11.2183C7.21653 10.1924 7.70006 9.2501 8.41008 8.51049C9.1201 7.77089 10.0247 7.26721 11.0095 7.06315C11.9944 6.8591 13.0152 6.96383 13.9429 7.3641C14.8705 7.76437 15.6634 8.4422 16.2213 9.31189C16.7792 10.1816 17.0769 11.204 17.0769 12.25C17.0754 13.6521 16.54 14.9963 15.5882 15.9877C14.6365 16.9792 13.346 17.5369 12 17.5385ZM12.9231 15.1346C12.9231 15.2621 12.8745 15.3844 12.7879 15.4746C12.7013 15.5647 12.5839 15.6154 12.4615 15.6154C12.2167 15.6154 11.9819 15.5141 11.8088 15.3338C11.6357 15.1534 11.5385 14.9089 11.5385 14.6538V12.25C11.4161 12.25 11.2987 12.1993 11.2121 12.1092C11.1256 12.019 11.0769 11.8967 11.0769 11.7692C11.0769 11.6417 11.1256 11.5194 11.2121 11.4293C11.2987 11.3391 11.4161 11.2885 11.5385 11.2885C11.7833 11.2885 12.0181 11.3898 12.1912 11.5701C12.3643 11.7504 12.4615 11.995 12.4615 12.25V14.6538C12.5839 14.6538 12.7013 14.7045 12.7879 14.7947C12.8745 14.8848 12.9231 15.0071 12.9231 15.1346ZM11.0769 9.60577C11.0769 9.46314 11.1175 9.32371 11.1936 9.20512C11.2697 9.08652 11.3778 8.99409 11.5043 8.93951C11.6308 8.88493 11.77 8.87065 11.9043 8.89847C12.0386 8.9263 12.1619 8.99498 12.2588 9.09584C12.3556 9.19669 12.4215 9.32519 12.4482 9.46508C12.475 9.60497 12.4612 9.74997 12.4088 9.88174C12.3564 10.0135 12.2677 10.1261 12.1539 10.2054C12.04 10.2846 11.9062 10.3269 11.7692 10.3269C11.5856 10.3269 11.4095 10.2509 11.2797 10.1157C11.1499 9.98046 11.0769 9.79703 11.0769 9.60577Z" fill="#5A6183" />
+                                        </svg>
+                                    }
+                                    <span class="produto-preco-span">@produto.Price.ToString("C2")</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+
+        </div>
+
+
+    }
+</div>
+
+@code {
+    CancellationTokenSource? _debounceCts;
+
+    bool isAdicionando = false;
+    private HashSet<int> accordionsAbertos = new();
+    private void ToggleAccordion(int index)
+    {
+        if (!accordionsAbertos.Add(index))
+            accordionsAbertos.Remove(index);
+
+        StateHasChanged();
+    }
+
+    private void AdicionarProduto(ProductClass item)
+    {
+        produtosAdicionados.Add(item);
+        isAdicionando = false;
+        searchTerm = string.Empty;
+        StateHasChanged();
+    }
+
+    private void RemoverProduto(ProductClass item)
+    {
+        produtosAdicionados.Remove(item);
+        StateHasChanged();
+    }
+
+    private void NavigateToProduct(string barcode)
+    {
+        NavigationManager.NavigateTo($"/product/{barcode}");
+    }
+    private async Task OnSearchTermChanged(string value)
+    {
+        isAdicionando = true;
+        searchTerm = value;
+
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+
+        try
+        {
+            await Task.Delay(300, token);
+            if (!token.IsCancellationRequested)
+            {
+                await LoadProdutos();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignorado
+        }
+    }
+
+    int currentPage = 1;
+    int pageSize = 10;
+    string searchTerm = "";
+    List<ProductClass> produtosParaAdicionar = new();
+    List<ProductClass> produtosAdicionados = new();
+
+    string nomeProduto = string.Empty;
+
+    async Task LoadProdutos()
+    {
+        var result = await produtoRepository.GetPagedProductsAsync(currentPage, pageSize, searchTerm);
+        produtosParaAdicionar = result.ToList();
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        SharedState.SetNavigationManager(NavigationManager);
+        SharedState.PushRoute(NavigationManager.Uri);
+        await LoadProdutos();
+        StateHasChanged();
+
+    }
+
+    bool hasResult = false;
+    List<StoreComparativoDTO> storeComparativoDTOs = new();
+    private async void Calcular()
+    {
+        // Supondo que você tenha acesso ao repositório e ProductVariation
+        var variations = await produtoVariacaoRepository.GetAll(); // ou await se for async
+        var stores = produtoRepository.GetAllStores().Result;
+
+        var result = new List<StoreComparativoDTO>();
+
+        foreach (var store in stores)
+        {
+            decimal total = 0;
+            var produtosComparativo = new List<ProdutoComparativoDTO>();
+
+            foreach (var produto in produtosAdicionados)
+            {
+                // Busca variação desse produto nessa loja
+                var variacao = variations
+                    .Where(v => v.ProductBarcode == produto.Barcode && v.StoreId == store.Id)
+                    .OrderByDescending(v => v.Date)
+                    .FirstOrDefault();
+
+                if (variacao != null)
+                {
+                    produtosComparativo.Add(new ProdutoComparativoDTO
+                        {
+                            ProductName = produto.Name,
+                            Price = variacao.Price,
+                            IsMedia = false
+                        });
+                    total += variacao.Price;
+                }
+                else
+                {
+                    // Calcula média nas outras lojas
+                    var precos = variations
+                        .Where(v => v.ProductBarcode == produto.Barcode)
+                        .Select(v => v.Price)
+                        .ToList();
+
+                    decimal media = precos.Any() ? precos.Average() : 0;
+                    produtosComparativo.Add(new ProdutoComparativoDTO
+                        {
+                            ProductName = produto.Name,
+                            Price = media,
+                            IsMedia = true
+                        });
+                    total += media;
+                }
+            }
+
+            result.Add(new StoreComparativoDTO
+                {
+                    StoreName = store.Name,
+                    Total = total,
+                    Produtos = produtosComparativo
+                });
+        }
+
+        // Ordena pelo menor total
+        storeComparativoDTOs = result.OrderBy(r => r.Total).ToList();
+        hasResult = true;
+        StateHasChanged();
+    }
+
+    private void GerarDadosFalsos()
+    {
+        storeComparativoDTOs = new List<StoreComparativoDTO>
+    {
+        new StoreComparativoDTO
+        {
+            StoreName = "Supermercado Bom Preço",
+            Total = 45.90m,
+            Produtos = new List<ProdutoComparativoDTO>
+            {
+                new ProdutoComparativoDTO { ProductName = "Arroz", BrandName = "Test", Price = 10.00m, IsMedia = false },
+                new ProdutoComparativoDTO { ProductName = "Feijão", BrandName = "Test", Price = 8.50m, IsMedia = false },
+                new ProdutoComparativoDTO { ProductName = "Óleo", BrandName = "Test", Price = 7.40m, IsMedia = true },
+                new ProdutoComparativoDTO { ProductName = "Açúcar", BrandName = "Test", Price = 6.00m, IsMedia = false },
+                new ProdutoComparativoDTO { ProductName = "Café", BrandName = "Test", Price = 14.00m, IsMedia = false }
+            }
+        },
+        new StoreComparativoDTO
+        {
+            StoreName = "Mercado Econômico",
+            Total = 47.30m,
+            Produtos = new List<ProdutoComparativoDTO>
+            {
+                new ProdutoComparativoDTO { ProductName = "Arroz", BrandName = "Test", Price = 10.50m, IsMedia = false },
+                new ProdutoComparativoDTO { ProductName = "Feijão", BrandName = "Test", Price = 8.80m, IsMedia = false },
+                new ProdutoComparativoDTO { ProductName = "Óleo", BrandName = "Test", Price = 7.00m, IsMedia = false },
+                new ProdutoComparativoDTO { ProductName = "Açúcar", BrandName = "Test", Price = 6.50m, IsMedia = false },
+                new ProdutoComparativoDTO { ProductName = "Café", BrandName = "Test", Price = 14.50m, IsMedia = true }
+            }
+        },
+        new StoreComparativoDTO
+        {
+            StoreName = "Supermercado Central",
+            Total = 49.10m,
+            Produtos = new List<ProdutoComparativoDTO>
+            {
+                new ProdutoComparativoDTO { ProductName = "Arroz",  BrandName = "Test",Price = 11.00m, IsMedia = false },
+                new ProdutoComparativoDTO { ProductName = "Feijão", BrandName = "Test", Price = 9.00m, IsMedia = true },
+                new ProdutoComparativoDTO { ProductName = "Óleo", BrandName = "Test", Price = 7.60m, IsMedia = false },
+                new ProdutoComparativoDTO { ProductName = "Açúcar", BrandName = "Test", Price = 6.50m, IsMedia = false },
+                new ProdutoComparativoDTO { ProductName = "Café",  BrandName = "Test",Price = 15.00m, IsMedia = false }
+            }
+        }
+    };
+        hasResult = true;
+        accordionsAbertos.Clear();
+        StateHasChanged();
+    }
+
+}

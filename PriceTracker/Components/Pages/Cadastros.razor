@@ -3,52 +3,85 @@
 @using PriceTracker.DTO
 @using PriceTracker.Interfaces
 @using PriceTracker.Models
+@using PriceTracker.Services
 @using ZXingBlazor.Components
 @inject IProductRepository produtoRepository
 @inject IProductVariationRepository produtoVariacaoRepository
 @inject NavigationManager NavigationManager
 @inject BarcodeState BarcodeState
-
+@inject AppSharedState SharedState
+@inject SweetAlertService Swal
 
 <div class="page">
     <h1 class="page-title">Cadastros</h1>
 
     <div class="search-bar">
-        <MudTextField ValueChanged="OnSearchTermChanged" T="string"
-                      Class="w-100" Value="searchTerm" Label="Pesquisar..." Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Dark" />
+        <MudTextField Immediate ValueChanged="OnSearchTermChanged" T="string"
+        Class="w-100" Value="searchTerm" Label="Pesquisar..." Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Dark" />
     </div>
 
+    <div class="filter-container">
+        @* <button class="filter-item @(_selectedFilter == selectedFilter.All ? "active" : "")" *@
+        @* @onclick="() => OnFilterChanged(selectedFilter.All)"> *@
+        @*     Todos *@
+        @* </button> *@
+        <button class="filter-item @(_selectedFilter == selectedFilter.Product ? "active" : "")"
+        @onclick="() => OnFilterChanged(selectedFilter.Product)">
+            Produtos
+        </button>
+        <button class="filter-item @(_selectedFilter == selectedFilter.Brand ? "active" : "")"
+        @onclick="() => OnFilterChanged(selectedFilter.Brand)">
+            Marcas
+        </button>
+        <button class="filter-item @(_selectedFilter == selectedFilter.Store ? "active" : "")"
+        @onclick="() => OnFilterChanged(selectedFilter.Store)">
+            Mercados
+        </button>
+    </div>
+
+
     <div class="product-list">
-        @foreach (var item in produtos)
+        @foreach (var item in cadastros)
         {
-            <div class="prod-card" @onclick="() => NavigateToProduct(item.Barcode)">
+            <div class="cadastro-card">
                 <div class="left-side">
-                    <span class="date-span">@item.Date?.ToString("dd/MM/yy HH:mm")</span>
-                    <span class="name-span">@item.Name</span>
-                    <span class="brand-span">@item.Brand</span>
+                    @if (item.Type == ListItemType.Product)
+                    {
+                        <span class="name-span">@item.Name</span>
+                    }
+                    else
+                    {
+                        <span class="name-span">@item.Name</span>
+                    }
                 </div>
                 <div class="right-side">
-                    <span class="price-span">@item.Price?.ToString("C2")</span>
-                    <span class="store-span">@item.Store</span>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => OnDeleteCadastro(item)" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => EditCadastro(item.Id, (int)item.Type)" />
                 </div>
             </div>
         }
+
     </div>
 </div>
 
 
 @code {
-    bool ShowScanBarcode { get; set; } = false;
-    public string? BarCode { get; set; }
-    public bool Pdf417 { get; set; }
-    public bool DecodeContinuously { get; set; }
-    public bool DecodeAllFormats { get; set; }
-    private string message;
+
+    private enum selectedFilter
+    {
+        All,
+        Product,
+        Brand,
+        Store
+    }
+
+    private selectedFilter _selectedFilter = selectedFilter.All;
+
     CancellationTokenSource? _debounceCts;
 
-    private void NavigateToProduct(string barcode)
+    private void EditCadastro(string id, int tipo)
     {
-        NavigationManager.NavigateTo($"/product/{barcode}");
+        NavigationManager.NavigateTo($"/cadastro/{id}/{tipo}");
     }
     private async Task OnSearchTermChanged(string value)
     {
@@ -63,7 +96,7 @@
             await Task.Delay(300, token);
             if (!token.IsCancellationRequested)
             {
-                await LoadProdutos();
+                await LoadCadastros();
             }
         }
         catch (TaskCanceledException)
@@ -72,61 +105,78 @@
         }
     }
 
-    private void OnScanResult(string result)
-    {
-        BarCode = result;
-        ShowScanBarcode = false;
-        BarcodeState.Barcode = result;
-        NavigationManager.NavigateTo("/register-price");
-    }
-
-    async Task ScanBarcode()
-    {
-        var scanner = new ZXing.Mobile.MobileBarcodeScanner();
-        var result = await scanner.Scan();
-        if (result != null)
-        {
-            BarcodeState.Barcode = result.Text;
-            NavigationManager.NavigateTo("/register-price");
-        }
-    }
-
-    private Task OnError(string message)
-    {
-        this.message = message;
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
-
-    string barcode = string.Empty;
-    string valor = string.Empty;
-    bool showModal = false;
-    int currentPage = 1;
-    int pageSize = 10;
     string searchTerm = "";
-    List<ProductListDTO> produtos = new();
+    List<ListItemDTO> cadastros = new();
 
     ProductClass? produtoExistente = null;
     string nomeProduto = string.Empty;
 
-    async Task LoadProdutos()
+    async Task LoadCadastros()
     {
-        var result = await produtoRepository.GetPagedAsync(currentPage, pageSize, searchTerm);
-        produtos = result.ToList();
-        StateHasChanged();
+        string? filter = _selectedFilter switch
+        {
+            selectedFilter.Product => "Product",
+            selectedFilter.Brand => "Brand",
+            selectedFilter.Store => "Store",
+            _ => null // All
+        };
+
+        cadastros = await produtoRepository.GetAllCadastrosAsync(searchTerm, filter);
     }
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadProdutos();
+        SharedState.SetNavigationManager(NavigationManager);
+        SharedState.PushRoute(NavigationManager.Uri);
+        await LoadCadastros();
 
     }
 
-    void CloseModal()
+    private async Task OnFilterChanged(selectedFilter filter)
     {
-        showModal = false;
-        valor = string.Empty;
+        if (_selectedFilter != filter)
+        {
+            _selectedFilter = filter;
+            await LoadCadastros();
+            StateHasChanged();
+        }
     }
+
+    private async Task OnDeleteCadastro(ListItemDTO item)
+    {
+        var ok = await Swal.FireAsync(new SweetAlertOptions
+            {
+                Title = "Confirmação",
+                Text = $"Você tem certeza que deseja deletar o cadastro '{item.Name}'?",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = "Sim, deletar",
+                CancelButtonText = "Cancelar"
+            });
+
+        if (ok.IsConfirmed)
+        {
+            var deleted = await produtoRepository.DeleteCadastroAsync(item.Id, item.Type);
+            if (deleted)
+            {
+                await LoadCadastros();
+            }
+            else
+            {
+               await Swal.FireAsync(new SweetAlertOptions
+                    {
+                        Title = "Erro",
+                        Text = "Não foi possível deletar o cadastro. Verifique se existem registros relacionados.",
+                        Icon = SweetAlertIcon.Error,
+                        ConfirmButtonText = "OK"
+                    });
+            }
+        }
+        else
+        {
+            return;
+        }
+    }
+
 
 }

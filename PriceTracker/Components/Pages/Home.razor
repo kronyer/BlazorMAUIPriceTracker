@@ -3,18 +3,19 @@
 @using PriceTracker.DTO
 @using PriceTracker.Interfaces
 @using PriceTracker.Models
+@using PriceTracker.Services
 @using ZXingBlazor.Components
 @inject IProductRepository produtoRepository
 @inject IProductVariationRepository produtoVariacaoRepository
 @inject NavigationManager NavigationManager
 @inject BarcodeState BarcodeState
-
+@inject AppSharedState SharedState
 
 <div class="page">
     <h1 class="page-title">Últimos registros</h1>
 
     <div class="search-bar">
-        <MudTextField ValueChanged="OnSearchTermChanged" T="string"
+        <MudTextField Immediate ValueChanged="OnSearchTermChanged" T="string"
                       Class="w-100" Value="searchTerm" Label="Pesquisar..." Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Dark" />
     </div>
 
@@ -140,6 +141,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        SharedState.SetNavigationManager(NavigationManager);
+        SharedState.PushRoute(NavigationManager.Uri);
         await LoadProdutos();
 
     }

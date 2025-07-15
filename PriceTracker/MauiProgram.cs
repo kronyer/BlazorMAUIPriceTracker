@@ -6,6 +6,8 @@ using PriceTracker.Data.Repositories;
 using PriceTracker.Interfaces;
 using ZXing.Net.Maui.Controls;
 using Microsoft.Extensions.DependencyInjection;
+using PriceTracker.Services;
+using CurrieTechnologies.Razor.SweetAlert2;
 
 namespace PriceTracker
 {
@@ -32,6 +34,10 @@ namespace PriceTracker
             builder.Services.AddHttpClient<GtinService>();
 
             builder.Services.AddSingleton<BarcodeState>();
+            builder.Services.AddSingleton<AppSharedState>();
+            builder.Services.AddSingleton<KeyboardStateService>();
+
+            builder.Services.AddSweetAlert2();
 
             builder.Services.AddMauiBlazorWebView();
 

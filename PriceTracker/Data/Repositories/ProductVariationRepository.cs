@@ -31,4 +31,9 @@ public class ProductVariationRepository : IProductVariationRepository
     {
         return await _db.Table<ProductVariation>().DeleteAsync(v => v.Id == id);
     }
+
+    public Task<IEnumerable<ProductVariation>> GetAll()
+    {
+        return _db.Table<ProductVariation>().ToListAsync().ContinueWith(t => (IEnumerable<ProductVariation>)t.Result);
+    }
 }

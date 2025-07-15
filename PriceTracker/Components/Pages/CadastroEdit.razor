@@ -1,0 +1,251 @@
+﻿@layout MainLayoutNoNav
+
+@page "/cadastro/{Id}/{Tipo:int}"
+@using PriceTracker.Components.Layout
+@using PriceTracker.Components.Pages.States
+@using PriceTracker.DTO
+@using PriceTracker.Interfaces
+@using PriceTracker.Models
+@using System.Globalization
+@using PriceTracker.Services
+@inject BarcodeState BarcodeState
+@inject NavigationManager NavigationManager
+@inject IProductRepository ProductRepository
+@inject IProductVariationRepository ProductVariationRepository
+@inject GtinService GtinService
+@inject AppSharedState SharedState
+@inject SweetAlertService Swal
+
+<div class="page">
+    <div class="register-price-inside">
+
+        <div class="page-header">
+            <div class="back-container" @onclick="OnBackClicked" style="cursor:pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M15.5306 18.9694C15.6003 19.0391 15.6556 19.1218 15.6933 19.2128C15.731 19.3039 15.7504 19.4015 15.7504 19.5C15.7504 19.5985 15.731 19.6961 15.6933 19.7872C15.6556 19.8782 15.6003 19.9609 15.5306 20.0306C15.4609 20.1003 15.3782 20.1556 15.2872 20.1933C15.1961 20.231 15.0985 20.2504 15 20.2504C14.9014 20.2504 14.8039 20.231 14.7128 20.1933C14.6218 20.1556 14.539 20.1003 14.4694 20.0306L6.96935 12.5306C6.89962 12.461 6.8443 12.3783 6.80656 12.2872C6.76882 12.1962 6.74939 12.0986 6.74939 12C6.74939 11.9014 6.76882 11.8038 6.80656 11.7128C6.8443 11.6217 6.89962 11.539 6.96935 11.4694L14.4694 3.96937C14.6101 3.82864 14.801 3.74958 15 3.74958C15.199 3.74958 15.3899 3.82864 15.5306 3.96937C15.6713 4.1101 15.7504 4.30097 15.7504 4.5C15.7504 4.69902 15.6713 4.88989 15.5306 5.03062L8.56029 12L15.5306 18.9694Z" fill="black" />
+                </svg>
+                <span class="voltar-span">
+                    Voltar
+                </span>
+
+
+            </div>
+            <h1 class="page-title">Editar</h1>
+
+</div>
+        
+
+        <div class="first-half">
+            @if(Tipo == (int)ListItemType.Product)
+            {
+
+                <MudTextField Margin="Margin.Dense" Class="w-100" @bind-Value="produto.Name" Label="Nome do produto"></MudTextField>
+                <div class="w-100">
+                    <MudAutocomplete T="string"
+                                     Style="width:100%"
+                                     Margin="Margin.Dense"
+                                     Label="Marca do produto"
+                                     Text="@produto.Brand?.Name"
+                                     TextChanged="OnBrandTextChanged"
+                                     Value="@produto.Brand?.Name"
+                                     ValueChanged="OnBrandValueChanged"
+                                     SearchFunc="@SearchBrands"
+                                     ToStringFunc="x => x" />
+                </div>
+
+
+            }
+            else if (Tipo == (int)ListItemType.Brand)
+            {
+
+                <MudTextField Margin="Margin.Dense" Class="w-100" @bind-Value="brand.Name" Label="Nome da marca"></MudTextField>
+            }
+            else if (Tipo == (int)ListItemType.Store)
+            {
+
+                <MudTextField Margin="Margin.Dense" Class="w-100" @bind-Value="store.Name" Label="Nome da loja"></MudTextField>
+            }
+        </div>
+
+        <button @onclick="OnCadastrarClicked" class="create-btn">
+            Cadastrar
+        </button>
+    </div>
+</div>
+
+@code {
+
+    private List<string> brands = new();
+
+    private ListItemDTO selectedItem = new();
+
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    [Parameter]
+    public int Tipo { get; set; }
+
+    private ProductClass produto = new();
+    private Brand brand = new();
+    private Store store = new();
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        SharedState.SetNavigationManager(NavigationManager);
+        SharedState.PushRoute(NavigationManager.Uri);
+
+        brands = (await ProductRepository.GetAllBrands())
+           .Select(b => b.Name)
+           .Where(b => !string.IsNullOrWhiteSpace(b))
+           .Distinct()
+           .OrderBy(b => b)
+           .ToList();
+
+        if (Tipo == (int)ListItemType.Product)
+        {
+            var product = await ProductRepository.GetByBarcodeAsync(Id);
+            if (product != null)
+            {
+                produto.Name = product.Name;
+                produto.Barcode = product.Barcode;
+                produto.BrandId = product.BrandId;
+                produto.Brand = (await ProductRepository.GetBrandById(product.BrandId)) ?? new();
+            }
+        }
+        else if (Tipo == (int)ListItemType.Brand)
+        {
+            var brand = await ProductRepository.GetBrandById(int.Parse(Id));
+            if (brand != null)
+            {
+                this.brand.Name = brand.Name;
+            }
+        }
+        else if (Tipo == (int)ListItemType.Store)
+        {
+            var store = await ProductRepository.GetStoreById(int.Parse(Id));
+            if (store != null)
+            {
+                this.store.Name = store.Name;
+            }
+        }
+       
+        StateHasChanged();
+    }
+
+    private async Task OnBackClicked()
+    {
+        await SharedState.RaiseBackButtonPressedAsync();
+    }
+
+
+    private async Task OnCadastrarClicked()
+    {
+        try
+        {
+            if (Tipo == (int)ListItemType.Product)
+            {
+                // Atualiza produto
+                if (!string.IsNullOrWhiteSpace(produto.Barcode))
+                {
+                    // Atualiza a marca se necessário
+                    var brandId = await ProductRepository.GetBrandByName(produto.Brand?.Name ?? "");
+                    if (brandId == 0 && !string.IsNullOrWhiteSpace(produto.Brand?.Name))
+                    {
+                        brandId = await ProductRepository.AddBrandAsync(new Brand { Name = produto.Brand.Name });
+                    }
+                    produto.BrandId = brandId;
+
+                    // Atualiza o produto
+                    await ProductRepository.UpdateProductAsync(produto);    
+                }
+            }
+            else if (Tipo == (int)ListItemType.Brand)
+            {
+                if (int.TryParse(Id, out int brandId))
+                {
+                    var dbBrand = await ProductRepository.GetBrandById(brandId);
+                    if (dbBrand != null)
+                    {
+                        dbBrand.Name = brand.Name;
+                        await ProductRepository.UpdateBrandAsync(dbBrand);
+                    }
+                }
+            }
+            else if (Tipo == (int)ListItemType.Store)
+            {
+                if (int.TryParse(Id, out int storeId))
+                {
+                    var dbStore = await ProductRepository.GetStoreById(storeId);
+                    if (dbStore != null)
+                    {
+                        dbStore.Name = store.Name;
+                        await ProductRepository.UpdateStoreAsync(dbStore);
+                    }
+                }
+            }
+            await Swal.FireAsync(new SweetAlertOptions
+                {
+                    Title = "Sucesso",
+                    Text = "Cadastro atualizado com sucesso!",
+                    Icon = SweetAlertIcon.Success,
+                    ConfirmButtonText = "OK"
+                });
+            NavigationManager.NavigateTo("/cadastros");
+        }
+        catch (Exception ex)
+        {
+            // Trate o erro conforme necessário
+        }
+    }
+
+
+   
+
+    private Task<IEnumerable<string>> SearchBrands(string value, CancellationToken ct)
+    {
+        return Task.FromResult(
+            brands.Where(b => b.Contains(value, StringComparison.OrdinalIgnoreCase)).AsEnumerable()
+        );
+    }
+
+    private async Task OnBrandValueChanged(string value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            var brandId = await ProductRepository.GetBrandByName(value);
+            if (brandId > 0)
+            {
+                // Marca já existe, busca do banco
+                var existingBrand = await ProductRepository.GetBrandById(brandId);
+                produto.Brand = existingBrand;
+                produto.BrandId = brandId;
+            }
+            else
+            {
+                // Marca não existe, apenas limpa a referência
+                produto.Brand = new Brand { Name = value };
+                produto.BrandId = 0;
+            }
+        }
+        else
+        {
+            produto.Brand = null;
+            produto.BrandId = 0;
+        }
+    }
+
+    private Task OnBrandTextChanged(string value)
+    {
+        if (produto.Brand == null)
+            produto.Brand = new Brand();
+
+        produto.Brand.Name = value;
+        // Não altera BrandId aqui!
+        return Task.CompletedTask;
+    }
+
+
+
+}
