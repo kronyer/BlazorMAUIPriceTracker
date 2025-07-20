@@ -13,8 +13,11 @@
 @inject IProductVariationRepository ProductVariationRepository
 @inject GtinService GtinService
 @inject AppSharedState SharedState
+@inject KeyboardStateService KeyboardState
+@implements IBackButtonHandler
+@implements IDisposable
 
-<div class="page">
+<div class="page @ContainerClass">
     <div class="register-price-inside">
 
         <div class="back-container" @onclick="OnBackClicked" style="cursor:pointer">
@@ -72,7 +75,10 @@
                 For="@(() =>price)"
                 />
                 <MudDatePicker Margin="Margin.Dense"
-                PickerVariant="PickerVariant.Dialog"
+                               PickerOpened="OnDatePickerOpen"
+                               PickerClosed="OnDatePickerClosed"
+                               
+                               PickerVariant="PickerVariant.Dialog"
                 Date="date" DateChanged="OnDateChanged" Label="Data da compra" Culture="@_en"></MudDatePicker>
             </div>
         </div>
@@ -96,11 +102,17 @@
     private List<string> brands = new();
     private List<string> stores = new();
 
+    string ContainerClass => KeyboardState.IsKeyboardVisible ? "with-keyboard" : "no-keyboard";
+
+    private bool isDatePickerOpen = false;
+
 
     protected override async Task OnInitializedAsync()
     {
         SharedState.SetNavigationManager(NavigationManager);
         SharedState.PushRoute(NavigationManager.Uri);
+        SharedState.RegisterBackButtonHandler(this);
+        KeyboardState.OnKeyboardChanged += StateHasChanged;
 
         barcode = BarcodeState.Barcode;
         date = DateTime.Now;
@@ -257,5 +269,38 @@
     {
         store = value;
         return Task.CompletedTask;
+    }
+
+    private void OnDatePickerOpen()
+    {
+        isDatePickerOpen = true;
+        StateHasChanged();
+    }
+
+    private void OnDatePickerClosed()
+    {
+        isDatePickerOpen = false;
+        StateHasChanged();
+    }
+
+    public Task OnBackButtonPressedAsync()
+    {
+        if (isDatePickerOpen)
+        {
+            // Exemplo: mostrar mensagem para o usuário
+            message = "Feche o seletor de data antes de voltar.";
+            StateHasChanged();
+            return Task.CompletedTask;
+        }
+        else
+        {
+            return SharedState.RaiseBackButtonPressedAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        KeyboardState.OnKeyboardChanged -= StateHasChanged;
+
     }
 }

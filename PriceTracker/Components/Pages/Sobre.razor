@@ -1,0 +1,31 @@
+﻿@page "/about"
+@using PriceTracker.Services
+@using Microsoft.Maui.ApplicationModel
+@inject NavigationManager NavigationManager
+@inject AppSharedState SharedState
+
+<div class="page">
+    <h1 class="page-title">Sobre o app</h1>
+
+    <div class="sobre-container">
+        <p>
+            O PriceTracker é um aplicativo desenvolvido para facilitar o acompanhamento e comparação de preços de produtos em diferentes estabelecimentos. Com ele, você pode registrar valores, consultar históricos de preços, analisar variações e identificar as melhores oportunidades de compra. O app permite o cadastro rápido de produtos por código de barras, além de oferecer uma interface intuitiva e recursos de busca avançada. Ideal para quem deseja economizar e tomar decisões mais inteligentes na hora de comprar.
+        </p>
+    </div>
+    <div class="version-container">
+        <span>V</span>
+        <span>@AppVersion</span>
+    </div>
+</div>
+
+@code {
+    public string AppVersion { get; set; } = "";
+
+    protected override void OnInitialized()
+    {
+        SharedState.SetNavigationManager(NavigationManager);
+        SharedState.PushRoute(NavigationManager.Uri);
+
+        AppVersion = AppInfo.Current.VersionString;
+    }
+}

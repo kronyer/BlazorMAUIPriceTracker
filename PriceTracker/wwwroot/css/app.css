@@ -117,3 +117,28 @@ h1:focus {
     font-weight: 400;
     line-height: normal;
 }
+
+.with-keyboard {
+    margin-bottom: 25rem !important;
+}
+
+body {
+    flex: 1;
+    background: #E9F0F5 !important;
+}
+.nav-active {
+    position: relative;
+}
+
+    .nav-active::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: 0px; /* ajuste a distância abaixo do botão conforme necessário */
+        width: 16px;
+        height: 4px;
+        border-radius: 999px;
+        background: var(--primary, #E9F0F5);
+        transform: translateX(-50%);
+        flex-shrink: 0;
+    }

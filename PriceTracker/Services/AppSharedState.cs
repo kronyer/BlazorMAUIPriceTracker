@@ -35,7 +35,7 @@ namespace PriceTracker.Services
             }
             else
             {
-                var previous = PopRoute();
+                var previous = PopValidRoute();
                 if (previous != null)
                 {
                     _nav.NavigateTo(previous);
@@ -57,24 +57,25 @@ namespace PriceTracker.Services
 
         public void PushRoute(string uri)
         {
-            var path = new Uri(uri, UriKind.RelativeOrAbsolute).AbsolutePath;
-
-            if (_ignoredRoutes.Any(ignored => path.StartsWith(ignored, StringComparison.OrdinalIgnoreCase)))
-                return;
-
+            // Não ignora mais nenhuma rota
             if (_navigationStack.Count == 0 || _navigationStack.Peek() != uri)
                 _navigationStack.Push(uri);
         }
 
-        public string? PopRoute()
+        public string? PopValidRoute()
         {
-            if (_navigationStack.Count > 1)
+            while (_navigationStack.Count > 1)
             {
-                _navigationStack.Pop();
-                return _navigationStack.Peek();
+                _navigationStack.Pop(); // remove o atual
+                var previous = _navigationStack.Peek();
+
+                if (!_ignoredRoutes.Any(ignored => previous.StartsWith(ignored, StringComparison.OrdinalIgnoreCase)))
+                    return previous;
             }
+
             return null;
         }
+
 
         public string? PeekPreviousRoute()
         {
