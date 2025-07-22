@@ -33,7 +33,7 @@
         <div class="first-half">
             <h1 class="page-title">Cadastrar valor</h1>
 
-            <MudTextField Margin="Margin.Dense" Class="w-100"  @bind-Value="name" Label="Nome do produto"></MudTextField>
+            <MudTextField Margin="Margin.Dense" Class="w-100" @bind-Value="name" Label="Nome do produto"></MudTextField>
             <div class="w-100">
                 <MudAutocomplete T="string"
                                  Style="width:100%"
@@ -46,7 +46,7 @@
                                  SearchFunc="@SearchBrands"
                                  ToStringFunc="x => x" />
             </div>
-            
+
 
             <div class="w-100">
                 <MudAutocomplete T="string"
@@ -60,27 +60,24 @@
                                  Label="Onde foi comprado"
                                  ToStringFunc="s => s"
                                  Style="width:100%" />
-</div>
-            
+            </div>
+
 
 
             <div class="two-input-div">
                 <MudNumericField title="Valor"
-                Immediate="false"
-                Label="Valor"
-                Margin="Margin.Dense"
-                Format="C2"
-                Culture="@_en"
-                T="decimal"
-                @bind-Value="price"
-                For="@(() =>price)"
-                />
+                                 Immediate="false"
+                                 Label="Valor"
+                                 Margin="Margin.Dense"
+                                 Format="C2"
+                                 Culture="@_en"
+                                 T="decimal"
+                                 @bind-Value="price"
+                                 @onfocus="SelectAllNumericField"
+                                 For="@(() =>price)" />
                 <MudDatePicker Margin="Margin.Dense"
-                               PickerOpened="OnDatePickerOpen"
-                               PickerClosed="OnDatePickerClosed"
-                               
                                PickerVariant="PickerVariant.Dialog"
-                Date="date" DateChanged="OnDateChanged" Label="Data da compra" Culture="@_en"></MudDatePicker>
+                               Date="date" DateChanged="OnDateChanged" Label="Data da compra" Culture="@_en"></MudDatePicker>
             </div>
         </div>
 
@@ -105,7 +102,9 @@
 
     string ContainerClass => KeyboardState.IsKeyboardVisible ? "with-keyboard" : "no-keyboard";
 
-    private bool isDatePickerOpen = false;
+    [Inject] IJSRuntime JS { get; set; } = default!;
+
+    private MudBlazor.MudNumericField<decimal>? numericFieldRef;
 
 
     protected override async Task OnInitializedAsync()
@@ -161,6 +160,11 @@
         StateHasChanged();
     }
 
+    private async Task SelectAllNumericField(FocusEventArgs args)
+    {
+        await JS.InvokeVoidAsync("selectAllNumericInput");
+    }
+
     private async Task OnBackClicked()
     {
         await SharedState.RaiseBackButtonPressedAsync();
@@ -185,20 +189,20 @@
                     storeId = await StoreRepository.AddStoreAsync(store);
 
                 product = new ProductClass
-                    {
-                        Barcode = barcode ?? "",
-                        Name = name,
-                        BrandId = brandId,
-                    };
+                {
+                    Barcode = barcode ?? "",
+                    Name = name,
+                    BrandId = brandId,
+                };
                 await ProductRepository.AddAsync(product);
 
                 var productVariation = new ProductVariation
-                    {
-                        ProductBarcode = product.Barcode,
-                        Price = price,
-                        Date = date,
-                        StoreId = storeId
-                    };
+                {
+                    ProductBarcode = product.Barcode,
+                    Price = price,
+                    Date = date,
+                    StoreId = storeId
+                };
                 await ProductVariationRepository.AddAsync(productVariation);
             }
             else
@@ -209,12 +213,12 @@
                     storeId = await StoreRepository.AddStoreAsync(store);
 
                 var productVariation = new ProductVariation
-                    {
-                        ProductBarcode = product.Barcode,
-                        Price = price,
-                        Date = date,
-                        StoreId = storeId
-                    };
+                {
+                    ProductBarcode = product.Barcode,
+                    Price = price,
+                    Date = date,
+                    StoreId = storeId
+                };
                 await ProductVariationRepository.AddAsync(productVariation);
             }
             message = "Cadastro realizado com sucesso!";
@@ -269,18 +273,6 @@
     {
         store = value;
         return Task.CompletedTask;
-    }
-
-    private void OnDatePickerOpen()
-    {
-        isDatePickerOpen = true;
-        StateHasChanged();
-    }
-
-    private void OnDatePickerClosed()
-    {
-        isDatePickerOpen = false;
-        StateHasChanged();
     }
 
     public void Dispose()

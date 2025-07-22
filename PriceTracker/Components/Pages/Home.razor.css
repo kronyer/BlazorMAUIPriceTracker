@@ -130,6 +130,8 @@
     font-style: normal;
     font-weight: 600;
     line-height: normal;
+    text-align:end;
+    width:100%;
 }
 
 .store-span {

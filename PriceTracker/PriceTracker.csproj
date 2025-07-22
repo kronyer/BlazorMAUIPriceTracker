@@ -82,6 +82,9 @@
       <Content Update="wwwroot\js\keyboardScroll.js">
         <SubType>Code</SubType>
       </Content>
+      <Content Update="wwwroot\js\selectAllInput.js">
+        <SubType>Code</SubType>
+      </Content>
       <Content Update="wwwroot\js\scrollHelper.js">
         <SubType>Code</SubType>
       </Content>

@@ -24,8 +24,8 @@ public class GtinService
             if (!string.IsNullOrEmpty(_token) && DateTime.UtcNow < _tokenExpiresAt)
                 return _token;
 
-            var username = "user";
-            var password = "123";
+            var username = "teste";
+            var password = "teste";
             var basicAuth = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
 
             var request = new HttpRequestMessage(HttpMethod.Post, "https://gtin.rscsistemas.com.br/oauth/token");
