@@ -10,11 +10,12 @@
 @inject BarcodeState BarcodeState
 @inject NavigationManager NavigationManager
 @inject IProductRepository ProductRepository
+@inject IBrandRepository BrandRepository
+@inject IStoreRepository StoreRepository
 @inject IProductVariationRepository ProductVariationRepository
 @inject GtinService GtinService
 @inject AppSharedState SharedState
 @inject KeyboardStateService KeyboardState
-@implements IBackButtonHandler
 @implements IDisposable
 
 <div class="page @ContainerClass">
@@ -111,20 +112,19 @@
     {
         SharedState.SetNavigationManager(NavigationManager);
         SharedState.PushRoute(NavigationManager.Uri);
-        SharedState.RegisterBackButtonHandler(this);
         KeyboardState.OnKeyboardChanged += StateHasChanged;
 
         barcode = BarcodeState.Barcode;
         date = DateTime.Now;
 
-        brands = (await ProductRepository.GetAllBrands())
+        brands = (await BrandRepository.GetAllBrands())
             .Select(b => b.Name)
             .Where(b => !string.IsNullOrWhiteSpace(b))
             .Distinct()
             .OrderBy(b => b)
             .ToList();
 
-        stores = (await ProductRepository.GetAllStores())
+        stores = (await StoreRepository.GetAllStores())
             .Select(s => s.Name)
             .Where(s => !string.IsNullOrWhiteSpace(s))
             .Distinct()
@@ -137,7 +137,7 @@
             if (product != null)
             {
                 name = product.Name;
-                var brandObj = await ProductRepository.GetBrandById(product.BrandId);
+                var brandObj = await BrandRepository.GetBrandById(product.BrandId);
                 brand = brandObj?.Name ?? "";
             }
             else if (Connectivity.Current.NetworkAccess == NetworkAccess.Internet)
@@ -175,14 +175,14 @@
             if (product == null)
             {
                 var brand = new Brand() { Name = this.brand };
-                var brandId = await ProductRepository.GetBrandByName(brand.Name);
+                var brandId = await BrandRepository.GetBrandByName(brand.Name);
                 if (brandId == 0)
-                    brandId = await ProductRepository.AddBrandAsync(brand);
+                    brandId = await BrandRepository.AddBrandAsync(brand);
 
                 var store = new Store() { Name = this.store };
-                var storeId = await ProductRepository.GetStoreByName(store.Name);
+                var storeId = await StoreRepository.GetStoreByName(store.Name);
                 if (storeId == 0)
-                    storeId = await ProductRepository.AddStoreAsync(store);
+                    storeId = await StoreRepository.AddStoreAsync(store);
 
                 product = new ProductClass
                     {
@@ -204,9 +204,9 @@
             else
             {
                 var store = new Store() { Name = this.store };
-                var storeId = await ProductRepository.GetStoreByName(store.Name);
+                var storeId = await StoreRepository.GetStoreByName(store.Name);
                 if (storeId == 0)
-                    storeId = await ProductRepository.AddStoreAsync(store);
+                    storeId = await StoreRepository.AddStoreAsync(store);
 
                 var productVariation = new ProductVariation
                     {
@@ -218,7 +218,7 @@
                 await ProductVariationRepository.AddAsync(productVariation);
             }
             message = "Cadastro realizado com sucesso!";
-            NavigationManager.NavigateTo("/");
+            NavigationManager.NavigateTo("/", true);
         }
         catch (Exception ex)
         {
@@ -281,21 +281,6 @@
     {
         isDatePickerOpen = false;
         StateHasChanged();
-    }
-
-    public Task OnBackButtonPressedAsync()
-    {
-        if (isDatePickerOpen)
-        {
-            // Exemplo: mostrar mensagem para o usuário
-            message = "Feche o seletor de data antes de voltar.";
-            StateHasChanged();
-            return Task.CompletedTask;
-        }
-        else
-        {
-            return SharedState.RaiseBackButtonPressedAsync();
-        }
     }
 
     public void Dispose()

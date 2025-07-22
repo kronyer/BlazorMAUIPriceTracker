@@ -11,6 +11,8 @@
 @inject BarcodeState BarcodeState
 @inject NavigationManager NavigationManager
 @inject IProductRepository ProductRepository
+@inject IBrandRepository BrandRepository
+@inject IStoreRepository StoreRepository
 @inject IProductVariationRepository ProductVariationRepository
 @inject GtinService GtinService
 @inject AppSharedState SharedState
@@ -96,7 +98,7 @@
         SharedState.SetNavigationManager(NavigationManager);
         SharedState.PushRoute(NavigationManager.Uri);
 
-        brands = (await ProductRepository.GetAllBrands())
+        brands = (await BrandRepository.GetAllBrands())
            .Select(b => b.Name)
            .Where(b => !string.IsNullOrWhiteSpace(b))
            .Distinct()
@@ -111,12 +113,12 @@
                 produto.Name = product.Name;
                 produto.Barcode = product.Barcode;
                 produto.BrandId = product.BrandId;
-                produto.Brand = (await ProductRepository.GetBrandById(product.BrandId)) ?? new();
+                produto.Brand = (await BrandRepository.GetBrandById(product.BrandId)) ?? new();
             }
         }
         else if (Tipo == (int)ListItemType.Brand)
         {
-            var brand = await ProductRepository.GetBrandById(int.Parse(Id));
+            var brand = await BrandRepository.GetBrandById(int.Parse(Id));
             if (brand != null)
             {
                 this.brand.Name = brand.Name;
@@ -124,7 +126,7 @@
         }
         else if (Tipo == (int)ListItemType.Store)
         {
-            var store = await ProductRepository.GetStoreById(int.Parse(Id));
+            var store = await StoreRepository.GetStoreById(int.Parse(Id));
             if (store != null)
             {
                 this.store.Name = store.Name;
@@ -150,10 +152,10 @@
                 if (!string.IsNullOrWhiteSpace(produto.Barcode))
                 {
                     // Atualiza a marca se necessário
-                    var brandId = await ProductRepository.GetBrandByName(produto.Brand?.Name ?? "");
+                    var brandId = await BrandRepository.GetBrandByName(produto.Brand?.Name ?? "");
                     if (brandId == 0 && !string.IsNullOrWhiteSpace(produto.Brand?.Name))
                     {
-                        brandId = await ProductRepository.AddBrandAsync(new Brand { Name = produto.Brand.Name });
+                        brandId = await BrandRepository.AddBrandAsync(new Brand { Name = produto.Brand.Name });
                     }
                     produto.BrandId = brandId;
 
@@ -165,11 +167,11 @@
             {
                 if (int.TryParse(Id, out int brandId))
                 {
-                    var dbBrand = await ProductRepository.GetBrandById(brandId);
+                    var dbBrand = await BrandRepository.GetBrandById(brandId);
                     if (dbBrand != null)
                     {
                         dbBrand.Name = brand.Name;
-                        await ProductRepository.UpdateBrandAsync(dbBrand);
+                        await BrandRepository.UpdateBrandAsync(dbBrand);
                     }
                 }
             }
@@ -177,11 +179,11 @@
             {
                 if (int.TryParse(Id, out int storeId))
                 {
-                    var dbStore = await ProductRepository.GetStoreById(storeId);
+                    var dbStore = await StoreRepository.GetStoreById(storeId);
                     if (dbStore != null)
                     {
                         dbStore.Name = store.Name;
-                        await ProductRepository.UpdateStoreAsync(dbStore);
+                        await StoreRepository.UpdateStoreAsync(dbStore);
                     }
                 }
             }
@@ -214,11 +216,11 @@
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
-            var brandId = await ProductRepository.GetBrandByName(value);
+            var brandId = await BrandRepository.GetBrandByName(value);
             if (brandId > 0)
             {
                 // Marca já existe, busca do banco
-                var existingBrand = await ProductRepository.GetBrandById(brandId);
+                var existingBrand = await BrandRepository.GetBrandById(brandId);
                 produto.Brand = existingBrand;
                 produto.BrandId = brandId;
             }

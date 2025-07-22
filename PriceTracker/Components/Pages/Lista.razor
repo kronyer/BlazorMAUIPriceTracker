@@ -6,6 +6,7 @@
 @using PriceTracker.Services
 @using ZXingBlazor.Components
 @inject IProductRepository produtoRepository
+@inject IStoreRepository StoreRepository
 @inject IProductVariationRepository produtoVariacaoRepository
 @inject NavigationManager NavigationManager
 @inject BarcodeState BarcodeState
@@ -214,7 +215,7 @@
     {
         // Supondo que você tenha acesso ao repositório e ProductVariation
         var variations = await produtoVariacaoRepository.GetAll(); // ou await se for async
-        var stores = produtoRepository.GetAllStores().Result;
+        var stores = StoreRepository.GetAllStores().Result;
 
         var result = new List<StoreComparativoDTO>();
 

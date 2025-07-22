@@ -6,6 +6,7 @@
 @using PriceTracker.Services
 @using ZXingBlazor.Components
 @inject IProductRepository produtoRepository
+@inject ICadastroRepository CadastroRepository
 @inject IProductVariationRepository produtoVariacaoRepository
 @inject NavigationManager NavigationManager
 @inject BarcodeState BarcodeState
@@ -121,7 +122,7 @@
             _ => null // All
         };
 
-        cadastros = await produtoRepository.GetAllCadastrosAsync(searchTerm, filter);
+        cadastros = await CadastroRepository.GetAllCadastrosAsync(searchTerm, filter);
     }
 
     protected override async Task OnInitializedAsync()
@@ -156,7 +157,7 @@
 
         if (ok.IsConfirmed)
         {
-            var deleted = await produtoRepository.DeleteCadastroAsync(item.Id, item.Type);
+            var deleted = await CadastroRepository.DeleteCadastroAsync(item.Id, item.Type);
             if (deleted)
             {
                 await LoadCadastros();

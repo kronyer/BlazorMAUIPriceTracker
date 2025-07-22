@@ -30,6 +30,9 @@ namespace PriceTracker
             builder.Services.AddSingleton(new AppDbContext(dbPath));
             builder.Services.AddMauiBlazorWebView();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<IStoreRepository, StoreRepository>();
+            builder.Services.AddScoped<IBrandRepository, BrandRepository>();
+            builder.Services.AddScoped<ICadastroRepository, CadastroRepository>();
             builder.Services.AddScoped<IProductVariationRepository, ProductVariationRepository>();
             builder.Services.AddHttpClient<GtinService>();
 
